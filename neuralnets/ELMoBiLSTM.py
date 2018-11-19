@@ -33,6 +33,7 @@ class ELMoBiLSTM:
         self.models = None
         self.modelSavePath = None
         self.resultsSavePath = None
+        self.is_cuda = K.tensorflow_backend._get_available_gpus()
 
 
         # Hyperparameters for the network
@@ -169,8 +170,12 @@ class ELMoBiLSTM:
 
             if self.params['charEmbeddings'].lower()=='lstm':  # Use LSTM for char embeddings from Lample et al., 2016
                 charLSTMSize = self.params['charLSTMSize']
-                chars = TimeDistributed(Bidirectional(LSTM(charLSTMSize, return_sequences=False)), name="char_lstm")(
-                    chars)
+                
+                if self.is_cuda:
+                    chars = TimeDistributed(Bidirectional(CuDNNLSTM(charLSTMSize, return_sequences=False)), name="char_lstm")(chars)
+                else:
+                    chars = TimeDistributed(Bidirectional(LSTM(charLSTMSize, return_sequences=False)), name="char_lstm")(chars)
+                
             else:  # Use CNNs for character embeddings from Ma and Hovy, 2016
                 charFilterSize = self.params['charFilterSize']
                 charFilterLength = self.params['charFilterLength']
@@ -205,11 +210,16 @@ class ELMoBiLSTM:
         logging.info("LSTM-Size: %s" % str(self.params['LSTM-Size']))
         cnt = 1
         for size in self.params['LSTM-Size']:      
-            if isinstance(self.params['dropout'], (list, tuple)):  
+            if isinstance(self.params['dropout'], (list, tuple)):
                 shared_layer = Bidirectional(LSTM(size, return_sequences=True, dropout=self.params['dropout'][0], recurrent_dropout=self.params['dropout'][1]), name='shared_varLSTM_'+str(cnt))(shared_layer)
+                
             else:
                 """ Naive dropout """
-                shared_layer = Bidirectional(LSTM(size, return_sequences=True), name='shared_LSTM_'+str(cnt))(shared_layer) 
+                if self.is_cuda:
+                    shared_layer = Bidirectional(CuDNNLSTM(size, return_sequences=True), name='shared_LSTM_'+str(cnt))(shared_layer) 
+                else:
+                    shared_layer = Bidirectional(LSTM(size, return_sequences=True), name='shared_LSTM_'+str(cnt))(shared_layer) 
+                    
                 if self.params['dropout'] > 0.0:
                     shared_layer = TimeDistributed(Dropout(self.params['dropout']), name='shared_dropout_'+str(self.params['dropout'])+"_"+str(cnt))(shared_layer)
             
@@ -242,9 +252,15 @@ class ELMoBiLSTM:
                     size = classifier[1]
                     if isinstance(self.params['dropout'], (list, tuple)): 
                         output = Bidirectional(LSTM(size, return_sequences=True, dropout=self.params['dropout'][0], recurrent_dropout=self.params['dropout'][1]), name=modelName+'_varLSTM_'+str(cnt))(output)
+                        
                     else:
                         """ Naive dropout """ 
-                        output = Bidirectional(LSTM(size, return_sequences=True), name=modelName+'_LSTM_'+str(cnt))(output) 
+                        
+                        if self.is_cuda:
+                            output = Bidirectional(CuDNNLSTM(size, return_sequences=True), name=modelName+'_LSTM_'+str(cnt))(output) 
+                        else:
+                            output = Bidirectional(LSTM(size, return_sequences=True), name=modelName+'_LSTM_'+str(cnt))(output) 
+                            
                         if self.params['dropout'] > 0.0:
                             output = TimeDistributed(Dropout(self.params['dropout']), name=modelName+'_dropout_'+str(self.params['dropout'])+"_"+str(cnt))(output)                    
                 else:

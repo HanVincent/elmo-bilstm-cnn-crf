@@ -33,7 +33,7 @@ logger.addHandler(ch)
 #
 ######################################################
 datasets = {
-    'conll2000_chunking':                                   #Name of the dataset
+    'dse':                                   #Name of the dataset
         {'columns': {0:'tokens', 1:'POS', 2:'chunk_BIO'},   #CoNLL format for the input data. Column 0 contains tokens, column 1 contains POS and column 2 contains chunk information using BIO encoding
          'label': 'chunk_BIO',                              #Which column we like to predict
          'evaluate': True,                                  #Should we evaluate on this task? Set true always for single task setups
@@ -66,8 +66,16 @@ pickleFile = perpareDataset(datasets, embLookup)
 #Load the embeddings and the dataset
 mappings, data = loadDatasetPickle(pickleFile)
 
+
 # Some network hyperparameters
-params = {'classifier': ['CRF'], 'LSTM-Size': [100,100], 'dropout': (0.5, 0.5)}
+params = {
+    'classifier': ['Softmax'], 
+    'LSTM-Size': [100, 100, 100], 
+    'dropout': 0,
+    'charEmbeddings': None, 
+    'maxCharLength': 50
+}
+
 
 model = ELMoBiLSTM(embLookup, params)
 model.setMappings(mappings)
