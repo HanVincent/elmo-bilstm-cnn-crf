@@ -6,6 +6,9 @@ from neuralnets.ELMoBiLSTM import ELMoBiLSTM
 from util.preprocessing import perpareDataset, loadDatasetPickle
 from neuralnets.ELMoWordEmbeddings import ELMoWordEmbeddings
 from keras import backend as K
+
+os.environ["CUDA_DEVICE_VISIBLE"] = "1"
+
 K.set_session(K.tf.Session(config=K.tf.ConfigProto(intra_op_parallelism_threads=4, inter_op_parallelism_threads=4)))
 
 ##################################################
